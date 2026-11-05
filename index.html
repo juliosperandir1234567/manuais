@@ -97,7 +97,12 @@ footer{color:var(--muted);font-size:13px;padding-block:24px 40px;border-top:1px 
 .leitor .btn-borda{background:transparent;color:#fff;border-color:rgba(255,255,255,.6)}
 .leitor .pg-info{font-size:13px;opacity:.85}
 .leitor .paginas{flex:1;overflow:auto;padding:12px 8px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;-webkit-overflow-scrolling:touch}
-.leitor .pg{background:#fff;width:min(100%,900px);box-shadow:0 2px 8px rgba(0,0,0,.35);flex:none}
+.leitor .pg{background:#fff;width:min(100%,900px);box-shadow:0 2px 8px rgba(0,0,0,.35);flex:none;margin-inline:auto}
+.leitor .paginas{align-items:flex-start}
+.leitor .zoom{display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,.12);border-radius:8px;padding:2px}
+.leitor .zoom button{font:700 16px var(--body);min-width:34px;height:32px;border:0;border-radius:6px;background:transparent;color:#fff;cursor:pointer}
+.leitor .zoom button:hover{background:rgba(255,255,255,.18)}
+.leitor .zoom .pct{font-size:13px;min-width:54px}
 .leitor .pg canvas{display:block;width:100%;height:auto}
 
 .leitor .pg{position:relative}

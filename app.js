@@ -113,9 +113,11 @@
     var bProx=el("button",{class:"btn btn-borda",type:"button",text:"›","aria-label":"Próximo resultado"});
     var bForm=el("form",{class:"busca-pdf",role:"search",onsubmit:function(e){e.preventDefault();buscarPdf(ctx,bq.value);}},[bq,el("button",{class:"btn btn-claro",type:"submit",text:"Buscar"}),bAnt,bProx]);
     var resBox=el("div",{class:"resultados",hidden:"hidden"});
-    var box=el("div",{class:"leitor",role:"dialog","aria-modal":"true","aria-label":m.equipamento},[el("div",{class:"barra"},[el("strong",{text:m.equipamento}),info,baixar,fechar,bForm]),resBox,pags]);
+    var zPct=el("button",{type:"button",class:"pct",text:"100%",title:"Voltar ao tamanho normal","aria-label":"Voltar ao tamanho normal",onclick:function(){zoomPdf(ctx,1);}});
+    var zoomBox=el("div",{class:"zoom",role:"group","aria-label":"Zoom"},[el("button",{type:"button",text:"−","aria-label":"Diminuir zoom",onclick:function(){zoomPdf(ctx,ctx.zoom/1.25);}}),zPct,el("button",{type:"button",text:"+","aria-label":"Aumentar zoom",onclick:function(){zoomPdf(ctx,ctx.zoom*1.25);}})]);
+    var box=el("div",{class:"leitor",role:"dialog","aria-modal":"true","aria-label":m.equipamento},[el("div",{class:"barra"},[el("strong",{text:m.equipamento}),info,zoomBox,baixar,fechar,bForm]),resBox,pags]);
     document.body.appendChild(box);document.body.style.overflow="hidden";
-    var ctx={box:box,vivo:true,obs:null,pags:pags,resBox:resBox,input:bq,textos:{},q:"",res:[],atual:-1};leitorAtual=ctx;
+    var ctx={zoom:1,zPct:zPct,box:box,vivo:true,obs:null,pags:pags,resBox:resBox,input:bq,textos:{},q:"",res:[],atual:-1};leitorAtual=ctx;
     bq.addEventListener("focus",function(){if(ctx.q&&ctx.resBox.childNodes.length)ctx.resBox.hidden=false;});bAnt.onclick=function(){irRes(ctx,ctx.atual-1);};bProx.onclick=function(){irRes(ctx,ctx.atual+1);};
     ctx.onKey=function(e){if(e.key==="Escape")fecharPdf();};document.addEventListener("keydown",ctx.onKey);
     fechar.focus();
@@ -131,7 +133,8 @@
           var vp=p1.getViewport({scale:1});pags.innerHTML="";
           var obs=new IntersectionObserver(function(ents){ents.forEach(function(en){if(en.isIntersecting&&!en.target.dataset.ok){en.target.dataset.ok="1";desenhar(pdf,+en.target.dataset.n,en.target,ctx);}});},{root:pags,rootMargin:"1200px 0px"});
           ctx.obs=obs;
-          for(var i=1;i<=pdf.numPages;i++){var d=el("div",{class:"pg","data-n":String(i),style:"aspect-ratio:"+vp.width+"/"+vp.height});pags.appendChild(d);obs.observe(d);}
+          ctx.largo=vp.width>vp.height;for(var i=1;i<=pdf.numPages;i++){var d=el("div",{class:"pg","data-n":String(i),style:"aspect-ratio:"+vp.width+"/"+vp.height});pags.appendChild(d);obs.observe(d);}
+          aplicarLargura(ctx);
         });
       });
     }).catch(function(){
@@ -139,10 +142,25 @@
       pags.innerHTML="";pags.appendChild(el("p",{class:"estado",text:"Não foi possível abrir o PDF aqui. Tente de novo ou use o botão Baixar PDF."}));info.textContent="";
     });
   }
+  function aplicarLargura(ctx){
+    var base=Math.min(ctx.pags.clientWidth-16,ctx.largo?1600:900);
+    var w=Math.round(base*ctx.zoom)+"px";
+    ctx.pags.querySelectorAll(".pg").forEach(function(d){d.style.width=w;});
+    ctx.zPct.textContent=Math.round(ctx.zoom*100)+"%";
+  }
+  function zoomPdf(ctx,z){
+    if(!ctx.pdf)return;z=Math.max(0.5,Math.min(4,z));if(Math.abs(z-ctx.zoom)<0.01)return;
+    var p=ctx.pags,ry=p.scrollTop/(p.scrollHeight||1),cx=(p.scrollLeft+p.clientWidth/2)/(p.scrollWidth||1);
+    ctx.zoom=z;aplicarLargura(ctx);
+    p.scrollTop=ry*p.scrollHeight;p.scrollLeft=Math.max(0,cx*p.scrollWidth-p.clientWidth/2);
+    clearTimeout(ctx.zT);ctx.zT=setTimeout(function(){
+      p.querySelectorAll(".pg").forEach(function(d){d.querySelectorAll("canvas,.hl").forEach(function(c){c.remove();});delete d.dataset.ok;ctx.obs.unobserve(d);ctx.obs.observe(d);});
+    },250);
+  }
   function desenhar(pdf,n,alvo,ctx){
     pdf.getPage(n).then(function(pg){
       if(!ctx.vivo)return;
-      var w=alvo.clientWidth||800,dpr=Math.min(window.devicePixelRatio||1,2);
+      var w=alvo.clientWidth||800,dpr=Math.min(window.devicePixelRatio||1,2);if(w*dpr>6000)dpr=6000/w;
       var vp0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:(w/vp0.width)*dpr});
       var c=document.createElement("canvas");c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
       alvo.appendChild(c);
