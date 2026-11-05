@@ -38,7 +38,7 @@
     var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:TX().marca}),el("span",{class:"selo",text:"Acervo digital"})]);
     if(editavel)mw.appendChild(el("button",{class:"por-logo",type:"button",text:estado.logo?"Trocar logo":"Colocar logo",onclick:function(){escolherFoto(estado.logo&&!/^blob:/.test(estado.logo)?estado.logo:"logo.png",function(u){estado.logo=u;});}}));
     app.appendChild(el("header",{class:"marca"},[mw]));
-    app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},TIPOS().filter(function(x){return x==="Manual"||x==="Guia rápido"||estado.manuais.some(function(m){return tipoDe(m)===x;})||editavel;}).map(function(x){var it=infoTipo(x);return [x,it.aba,it.slug];}).map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
+    app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},TIPOS().filter(function(x){return x==="Manual"||x==="Guia rápido"||((estado.textos||{}).tipos||[]).indexOf(x)>=0||estado.manuais.some(function(m){return tipoDe(m)===x;})||editavel;}).map(function(x){var it=infoTipo(x);return [x,it.aba,it.slug];}).map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
     var hero=el("section",{class:"hero","aria-label":"Apresentação"},[
       el("div",{class:"foto",style:bg(estado.capa),role:"img","aria-label":"Colhedora de cana na lavoura"}),
       el("div",{class:"wrap txt"},[
@@ -100,7 +100,7 @@
     box.appendChild(head);
     tipos();
     if(!vis.length){
-      box.appendChild(el("div",{class:"vazio"},estado.manuais.length?[el("strong",{text:"Nada encontrado"}),"Tente outro nome, marca ou modelo."]:[el("strong",{text:"Nenhum manual ainda"}),editavel?"Use o quadro \"Adicionar manual\" logo abaixo para enviar o primeiro PDF.":"Os manuais aparecem aqui assim que forem adicionados."]));
+      box.appendChild(el("div",{class:"vazio"},(filtro.q||filtro.cat)&&estado.manuais.length?[el("strong",{text:"Nada encontrado"}),"Tente outro nome, marca ou modelo."]:[el("strong",{text:"Nada por aqui ainda"}),editavel?"Use o quadro \"Adicionar manual\" logo abaixo para enviar o primeiro PDF.":"Os arquivos aparecem aqui assim que forem adicionados."]));
       return;
     }
     var l=el("div",{class:"lista"});
