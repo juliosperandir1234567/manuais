@@ -76,7 +76,8 @@
         el("div",{class:"nome"},[el("span",{text:c.nome}),n?el("span",{class:"qtd",text:n+" "+(n===1?infoTipo(filtro.tipo).um:infoTipo(filtro.tipo).varios)}):null])
       ]);
       var w=el("div",{class:"cat-wrap"},[b]);
-      if(editavel){w.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto",onclick:function(){escolherFoto(c.foto&&!/^blob:/.test(c.foto)?c.foto:"manuais/"+c.nome+"/foto.jpg",function(u){c.foto=u;});}}));
+      if(editavel){w.appendChild(el("button",{class:"trocar nomebtn",type:"button",text:"Trocar nome",onclick:function(){renomearCat(c);}}));
+        w.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto",onclick:function(){escolherFoto(c.foto&&!/^blob:/.test(c.foto)?c.foto:"manuais/"+c.nome+"/foto.jpg",function(u){c.foto=u;});}}));
         var tot=estado.categorias.length;
         w.appendChild(el("div",{class:"ordem"},[
           el("button",{type:"button","aria-label":"Mover "+c.nome+" para antes",text:"←",disabled:ci===0?"disabled":null,onclick:function(e){moverCat(ci,-1,e.currentTarget);}}),
@@ -322,6 +323,17 @@
           .then(function(tr){return req("POST",base+"/commits",{message:msg,tree:tr.sha,parents:[commit]});})
           .then(function(nc){return req("PATCH",base+"/refs/heads/main",{sha:nc.sha});});
       },
+      renomearPasta:function(de,para,extras,msg){
+        var base="/repos/"+owner+"/"+repo+"/git",commit,arvore;
+        return req("GET",base+"/ref/heads/main").then(function(r){commit=r.object.sha;return req("GET",base+"/commits/"+commit);})
+          .then(function(c){arvore=c.tree.sha;return req("GET",base+"/trees/"+arvore+"?recursive=1");})
+          .then(function(t){var pre="manuais/"+de+"/",np="manuais/"+para+"/",itens=[];
+            (t.tree||[]).forEach(function(x){if(x.type==="blob"&&x.path.indexOf(pre)===0){itens.push({path:np+x.path.slice(pre.length),mode:x.mode,type:"blob",sha:x.sha});itens.push({path:x.path,mode:x.mode,type:"blob",sha:null});}
+              if(x.type==="blob"&&x.path.indexOf(np)===0)throw {code:"existe"};});
+            return req("POST",base+"/trees",{base_tree:arvore,tree:itens.concat(extras||[])});})
+          .then(function(tr){return req("POST",base+"/commits",{message:msg,tree:tr.sha,parents:[commit]});})
+          .then(function(nc){return req("PATCH",base+"/refs/heads/main",{sha:nc.sha});});
+      },
       del:function(p,msg){return sha(p).then(function(s){if(!s)return {};return req("DELETE",cpath(p),{message:msg,sha:s,branch:"main"});});}
     };
   })();
@@ -350,6 +362,18 @@
     var b=document.querySelectorAll(".cat-wrap")[j];if(b){var f=b.querySelector(d<0?".ordem button:first-child":".ordem button:last-child");if(f&&!f.disabled)f.focus();}
     avisoTopo("Salvando a nova ordem…");
     clearTimeout(salvarOrdemT);salvarOrdemT=setTimeout(function(){salvarOrdem().then(function(){avisoTopo("Ordem salva! Para todo mundo, o site atualiza em 1 a 2 minutos.");}).catch(function(e){avisoTopo(erroGH(e),true);});},1500);
+  }
+  function renomearCat(c){
+    var atual=c.nome,novo=prompt("Novo nome da categoria:",atual);if(novo==null)return;novo=limparNome(novo);
+    if(!novo||novo===atual)return;
+    if(estado.categorias.some(function(x){return x!==c&&norm(x.nome)===norm(novo);})){aviso("Já existe uma categoria com esse nome.");return;}
+    avisoTopo("Trocando o nome…");
+    var txt="# Ordem dos cartões no site: uma categoria por linha, igual ao nome da pasta.\n"+estado.categorias.map(function(x){return x===c?novo:x.nome;}).join("\n")+"\n";
+    GH.renomearPasta(atual,novo,[{path:"manuais/ordem.txt",mode:"100644",type:"blob",content:txt}],"Renomeia categoria "+atual+" → "+novo).then(function(){
+      c.nome=novo;
+      estado.manuais.forEach(function(m){if(m.categoria===atual){m.categoria=novo;m.id="manuais/"+novo+"/"+m.id.slice(("manuais/"+atual+"/").length);}});
+      if(filtro.cat===atual)filtro.cat=novo;montar();avisoTopo("Nome trocado! Para todo mundo, o site atualiza em 1 a 2 minutos.");
+    }).catch(function(e){avisoTopo(e&&e.code==="existe"?"Já existe uma pasta com esse nome.":erroGH(e),true);});
   }
   function salvarOrdem(){
     var txt="# Ordem dos cartões no site: uma categoria por linha, igual ao nome da pasta.\n"+estado.categorias.map(function(c){return c.nome;}).join("\n")+"\n";
