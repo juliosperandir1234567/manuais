@@ -1,0 +1,31 @@
+{
+ "atualizado": "2026-11-05T00:57:44+00:00",
+ "logo": null,
+ "categorias": [
+  {
+   "nome": "Tratores",
+   "foto": "manuais/Tratores/foto.jpg"
+  },
+  {
+   "nome": "Colhedoras de cana",
+   "foto": "manuais/Colhedoras de cana/foto.jpg"
+  },
+  {
+   "nome": "Pulverizadores",
+   "foto": "manuais/Pulverizadores/foto.jpg"
+  },
+  {
+   "nome": "Motoniveladoras",
+   "foto": "manuais/Motoniveladoras/foto.jpg"
+  }
+ ],
+ "manuais": [
+  {
+   "nome": "Colhedoras CH950 e CH960 (John Deere)",
+   "tipo": "Manual",
+   "categoria": "Colhedoras de cana",
+   "arquivo": "manuais/Colhedoras de cana/Manual - Colhedoras CH950 e CH960 (John Deere).pdf",
+   "tamanho": 17411306
+  }
+ ]
+}
