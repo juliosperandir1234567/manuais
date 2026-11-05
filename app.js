@@ -28,7 +28,7 @@
 
   function montar(){
     app.innerHTML="";
-    var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:estado.marca||"Central de Manuais"}),el("span",{class:"selo",text:"Biblioteca digital"})]);
+    var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:estado.marca||"Central de Manuais"}),el("span",{class:"selo",text:"Acervo digital"})]);
     if(editavel)mw.appendChild(el("button",{class:"por-logo",type:"button",text:estado.logo?"Trocar logo":"Colocar logo",onclick:function(){escolherFoto(function(id){estado.logo=id;});}}));
     app.appendChild(el("header",{class:"marca"},[mw]));
     app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},[["Manual","Manuais","manuais"],["Guia rápido","Guias rápidos","guias"]].map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
