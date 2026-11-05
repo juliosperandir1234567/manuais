@@ -1,5 +1,15 @@
 # Central de Manuais UAM
 
+## Jeito mais fácil: Área do editor no próprio site
+
+No fim da página do site, toque em **Área do editor** e cole o seu código de acesso do GitHub.
+Depois disso aparecem o quadro "Adicionar manual", os botões de trocar foto/logo, as setas de ordem e o botão Remover.
+
+Para criar o código (uma vez só): github.com/settings/personal-access-tokens/new
+- Repository access: Only select repositories → este repositório
+- Permissions → Repository permissions → Contents: Read and write
+- Gere e copie o código (começa com `github_pat_`). Ele fica guardado só no aparelho onde você colar.
+
 Site com manuais e guias rápidos dos equipamentos, publicado pelo GitHub Pages.
 
 ## Como adicionar um manual ou guia

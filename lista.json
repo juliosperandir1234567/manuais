@@ -1,6 +1,6 @@
 {
- "atualizado": "2026-11-05T10:15:02+00:00",
- "logo": null,
+ "atualizado": "2026-11-05T11:19:24+00:00",
+ "logo": "logo.jpg",
  "categorias": [
   {
    "nome": "Colhedoras de cana",
@@ -33,6 +33,13 @@
    "categoria": "Colhedoras de cana",
    "arquivo": "manuais/Colhedoras de cana/Manual - Colhedoras de Cana-de-Açúcar CH950 e CH960 (John Deere).pdf",
    "tamanho": 17411306
+  },
+  {
+   "nome": "Trator 7225J (John Deere)",
+   "tipo": "Guia rápido",
+   "categoria": "Tratores",
+   "arquivo": "manuais/Tratores/Guia rápido - Trator 7225J (John Deere).pdf",
+   "tamanho": 1496500
   }
  ]
 }

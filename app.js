@@ -12,24 +12,14 @@
   function norm(s){return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
   function tam(b){if(!b)return "";return b>1048576?(b/1048576).toFixed(1).replace(".",",")+" MB":Math.max(1,Math.round(b/1024))+" KB";}
   function data(iso){try{return new Date(iso).toLocaleDateString("pt-BR")}catch(e){return ""}}
-  function urlFoto(f){if(!f)return null;return f.indexOf("data:")===0?f:enc(f);}
+  function urlFoto(f){if(!f)return null;return /^(data|blob):/.test(f)?f:enc(f);}
   function bg(f){var u=urlFoto(f);return u?"background-image:url('"+u+"')":null;}
   function contar(c){return estado.manuais.filter(function(m){return m.categoria===c&&tipoDe(m)===filtro.tipo}).length;}
-
-  function escolherFoto(cb){
-    var inp=el("input",{type:"file",accept:"image/*"});
-    inp.addEventListener("change",function(){var f=inp.files[0];if(!f)return;
-      if(f.size>20*1048576){aviso("A foto passa de 20 MB.");return;}
-      assets.upload(f).then(function(r){cb(r.id);return salvar();}).catch(function(e){aviso("Não deu para trocar a foto ("+(e&&e.code||"erro")+").");});
-    });
-    inp.click();
-  }
-  function aviso(t){var m=document.getElementById("f-msg");if(m){m.className="msg erro";m.textContent=t;}}
 
   function montar(){
     app.innerHTML="";
     var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:estado.marca||"Central de Manuais"}),el("span",{class:"selo",text:"Acervo digital"})]);
-    if(editavel)mw.appendChild(el("button",{class:"por-logo",type:"button",text:estado.logo?"Trocar logo":"Colocar logo",onclick:function(){escolherFoto(function(id){estado.logo=id;});}}));
+    if(editavel)mw.appendChild(el("button",{class:"por-logo",type:"button",text:estado.logo?"Trocar logo":"Colocar logo",onclick:function(){escolherFoto(estado.logo&&!/^blob:/.test(estado.logo)?estado.logo:"logo.png",function(u){estado.logo=u;});}}));
     app.appendChild(el("header",{class:"marca"},[mw]));
     app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},[["Manual","Manuais","manuais"],["Guia rápido","Guias rápidos","guias"]].map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
     var hero=el("section",{class:"hero","aria-label":"Apresentação"},[
@@ -43,7 +33,7 @@
         ])])
       ])
     ]);
-    if(editavel)hero.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto da faixa",onclick:function(){escolherFoto(function(id){estado.capa=id;});}}));
+    if(editavel)hero.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto da faixa",onclick:function(){escolherFoto("img/hero.jpg",function(u){estado.capa=u;});}}));
     app.appendChild(hero);
     var main=el("main",{},[el("div",{class:"wrap"},[
       el("div",{class:"cab-cat"},[el("h3",{class:"sec-titulo",text:"Explore por categoria"})]),
@@ -51,7 +41,7 @@
       el("section",{class:"bloco","aria-label":"Categorias"},[el("div",{class:"cats",id:"cats"})]),
       el("section",{class:"bloco",id:"secao-lista","aria-label":"Manuais"},[el("div",{id:"lista"})]),
       el("div",{id:"admin"}),
-      el("footer",{text:"Atualizado em "+(estado.atualizado?data(estado.atualizado):"—")+" · Toque em uma categoria para ver os manuais."})
+      el("footer",{},["Atualizado em "+(estado.atualizado?data(estado.atualizado):"—")+" · Toque em uma categoria para ver os manuais. · ",editavel?el("button",{class:"limpar",type:"button",text:"Sair do modo editor",onclick:function(){GH.setTok("");editavel=false;modoEditor=false;montar();}}):el("button",{class:"limpar",type:"button",text:"Área do editor",onclick:function(){modoEditor=true;entrarForm();document.getElementById("admin").scrollIntoView({block:"start"});}})])
     ])]);
     app.appendChild(main);
     cats();listar();admin();
@@ -68,7 +58,7 @@
         el("div",{class:"nome"},[el("span",{text:c.nome}),n?el("span",{class:"qtd",text:n+(ehGuia()?(n===1?" guia":" guias"):(n===1?" manual":" manuais"))}):null])
       ]);
       var w=el("div",{class:"cat-wrap"},[b]);
-      if(editavel){w.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto",onclick:function(){escolherFoto(function(id){c.foto=id;});}}));
+      if(editavel){w.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto",onclick:function(){escolherFoto(c.foto&&!/^blob:/.test(c.foto)?c.foto:"manuais/"+c.nome+"/foto.jpg",function(u){c.foto=u;});}}));
         var tot=estado.categorias.length;
         w.appendChild(el("div",{class:"ordem"},[
           el("button",{type:"button","aria-label":"Mover "+c.nome+" para antes",text:"←",disabled:ci===0?"disabled":null,onclick:function(e){moverCat(ci,-1,e.currentTarget);}}),
@@ -78,14 +68,6 @@
     });
   }
 
-  var salvarOrdemT=null;
-  function moverCat(i,d,btn){
-    var j=i+d,a=estado.categorias;if(j<0||j>=a.length)return;
-    var x=a[i];a[i]=a[j];a[j]=x;cats();
-    var b=document.querySelectorAll(".cat-wrap")[j];if(b){var f=b.querySelector(d<0?".ordem button:first-child":".ordem button:last-child");if(f&&!f.disabled)f.focus();}
-    var av=document.getElementById("aviso-ordem");if(av){av.hidden=false;av.textContent="Salvando a nova ordem…";}
-    clearTimeout(salvarOrdemT);salvarOrdemT=setTimeout(function(){salvar().catch(function(e){if(av)av.textContent="Não deu para salvar a ordem ("+(e&&e.code||"erro")+").";});},1500);
-  }
   function listar(){
     var box=document.getElementById("lista");box.innerHTML="";
     var q=norm(filtro.q);
@@ -238,7 +220,7 @@
   }
 
   function admin(){
-    var box=document.getElementById("admin");box.innerHTML="";if(!editavel)return;
+    var box=document.getElementById("admin");box.innerHTML="";if(!editavel){if(modoEditor)entrarForm();return;}
     var msg=el("p",{class:"msg",id:"f-msg",role:"status"});
     var abas=el("div",{class:"abas",role:"tablist"},[["manual","Adicionar manual"],["cat","Nova categoria"]].map(function(a){return el("button",{type:"button",role:"tab","aria-selected":String(aba===a[0]),text:a[1],onclick:function(){aba=a[0];admin();}});}));
     var corpo;
@@ -247,7 +229,7 @@
       if(filtro.cat)sel.value=filtro.cat;
       var btn=el("button",{class:"btn btn-pri",type:"submit",text:"Adicionar manual"});
       corpo=el("form",{class:"form",onsubmit:function(e){e.preventDefault();enviar(corpo,btn,msg);}},[
-        el("div",{class:"campo cheio"},[el("label",{for:"f-arq",text:"Arquivo PDF (manual ou guia rápido, até 20 MB)"}),el("input",{id:"f-arq",type:"file",accept:"application/pdf,.pdf",required:"required"})]),
+        el("div",{class:"campo cheio"},[el("label",{for:"f-arq",text:"Arquivo PDF (manual ou guia rápido, até 50 MB)"}),el("input",{id:"f-arq",type:"file",accept:"application/pdf,.pdf",required:"required"})]),
         el("div",{class:"campo"},[el("label",{for:"f-eq",text:"Equipamento"}),el("input",{id:"f-eq",required:"required",placeholder:"Ex.: Trator 6110J"})]),
         el("div",{class:"campo"},[el("label",{for:"f-cat",text:"Categoria"}),sel]),
         el("div",{class:"campo"},[el("label",{for:"f-tipo",text:"Tipo"}),el("select",{id:"f-tipo"},TIPOS.map(function(x){return el("option",{value:x,text:x,selected:x===filtro.tipo?"selected":null});}))]),
@@ -266,46 +248,102 @@
     box.appendChild(el("section",{class:"admin bloco","aria-label":"Área do editor"},[el("h3",{text:"Área do editor"}),el("p",{class:"ajuda",text:"Só quem edita o site vê este quadro, os botões de trocar foto e as setas para mudar a ordem das categorias."}),abas,corpo]));
   }
 
-  function falha(btn,msg,e){btn.disabled=false;msg.className="msg erro";msg.textContent=e&&e.code==="unsupported_type"?"Esse tipo de arquivo não é aceito.":"Não foi possível salvar agora ("+(e&&e.code||"erro")+"). Tente de novo.";}
+  // ---- Editor pelo GitHub: grava direto no repositório com um token do próprio editor ----
+  var GH=(function(){
+    var h=location.hostname,parts=location.pathname.split("/").filter(Boolean),owner="juliosperandir1234567",repo="manuais";
+    if(/\.github\.io$/.test(h)){owner=h.split(".")[0];repo=(parts[0]&&!/\./.test(parts[0]))?parts[0]:h;}
+    var CHAVE="acervo_gh_token";
+    function tok(){try{return localStorage.getItem(CHAVE)||"";}catch(e){return "";}}
+    function setTok(t){try{if(t)localStorage.setItem(CHAVE,t);else localStorage.removeItem(CHAVE);}catch(e){}}
+    function req(method,url,body,t){
+      return fetch("https://api.github.com"+url,{method:method,headers:{"Authorization":"Bearer "+(t||tok()),"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},body:body?JSON.stringify(body):undefined})
+        .then(function(r){if(r.status===404&&method==="GET")return null;if(!r.ok)return r.text().then(function(x){var e=new Error(x);e.code="HTTP "+r.status;throw e;});return r.status===204?{}:r.json();});
+    }
+    function cpath(p){return "/repos/"+owner+"/"+repo+"/contents/"+p.split("/").map(encodeURIComponent).join("/");}
+    function sha(p){return req("GET",cpath(p)+"?ref=main").then(function(j){return j&&j.sha||null;});}
+    return {
+      owner:owner,repo:repo,tok:tok,setTok:setTok,
+      verificar:function(t){return req("GET","/repos/"+owner+"/"+repo,null,t).then(function(j){if(!j)throw {code:"repo"};if(!j.permissions||!j.permissions.push)throw {code:"sem_permissao"};return j;});},
+      existe:function(p){return sha(p).then(function(s){return !!s;});},
+      put:function(p,b64,msg){return sha(p).then(function(s){var b={message:msg,content:b64,branch:"main"};if(s)b.sha=s;return req("PUT",cpath(p),b);});},
+      del:function(p,msg){return sha(p).then(function(s){if(!s)return {};return req("DELETE",cpath(p),{message:msg,sha:s,branch:"main"});});}
+    };
+  })();
+  var modoEditor=false;
+  function b64Arquivo(f){return new Promise(function(ok,erro){var r=new FileReader();r.onload=function(){ok(String(r.result).split(",")[1]);};r.onerror=erro;r.readAsDataURL(f);});}
+  function b64Texto(s){return btoa(unescape(encodeURIComponent(s)));}
+  function limparNome(s){return s.replace(/[\\\/:*?"<>|#%]+/g," ").replace(/\s+/g," ").trim();}
+  function okMsg(msg,t){if(msg){msg.className="msg";msg.textContent=t||"Pronto! O site atualiza sozinho em 1 a 2 minutos.";}}
+  function erroGH(e){var c=e&&e.code||"erro";if(c==="HTTP 401")return "O código de acesso venceu ou está errado. Saia do modo editor e entre de novo.";if(c==="HTTP 409")return "Outra alteração estava sendo salva. Espere alguns segundos e tente de novo.";if(c==="HTTP 422")return "O GitHub recusou o arquivo (talvez seja grande demais).";return "Não foi possível salvar agora ("+c+"). Tente de novo.";}
+  function escolherFoto(caminho,cb){
+    var inp=el("input",{type:"file",accept:"image/jpeg,image/png,image/webp"});
+    inp.addEventListener("change",function(){var f=inp.files[0];if(!f)return;
+      if(f.size>20*1048576){aviso("A foto passa de 20 MB.");return;}
+      avisoTopo("Enviando a foto…");
+      b64Arquivo(f).then(function(b){return GH.put(caminho,b,"Foto: "+caminho);}).then(function(){cb(URL.createObjectURL(f));montar();avisoTopo("Foto trocada! Para todo mundo, o site atualiza em 1 a 2 minutos.");})
+        .catch(function(e){avisoTopo(erroGH(e),true);});
+    });
+    inp.click();
+  }
+  function avisoTopo(t,erro){var av=document.getElementById("aviso-ordem");if(av){av.hidden=false;av.style.color=erro?"var(--danger)":"";av.textContent=t;av.scrollIntoView({block:"nearest"});}}
+  function aviso(t){avisoTopo(t,true);}
+  var salvarOrdemT=null;
+  function moverCat(i,d,btn){
+    var j=i+d,a=estado.categorias;if(j<0||j>=a.length)return;
+    var x=a[i];a[i]=a[j];a[j]=x;cats();
+    var b=document.querySelectorAll(".cat-wrap")[j];if(b){var f=b.querySelector(d<0?".ordem button:first-child":".ordem button:last-child");if(f&&!f.disabled)f.focus();}
+    avisoTopo("Salvando a nova ordem…");
+    clearTimeout(salvarOrdemT);salvarOrdemT=setTimeout(function(){salvarOrdem().then(function(){avisoTopo("Ordem salva! Para todo mundo, o site atualiza em 1 a 2 minutos.");}).catch(function(e){avisoTopo(erroGH(e),true);});},1500);
+  }
+  function salvarOrdem(){
+    var txt="# Ordem dos cartões no site: uma categoria por linha, igual ao nome da pasta.\n"+estado.categorias.map(function(c){return c.nome;}).join("\n")+"\n";
+    return GH.put("manuais/ordem.txt",b64Texto(txt),"Ordem das categorias");
+  }
+  function falha(btn,msg,e){btn.disabled=false;msg.className="msg erro";msg.textContent=erroGH(e);}
   function enviar(f,btn,msg){
     var arq=f.querySelector("#f-arq").files[0];
     if(!arq){msg.className="msg erro";msg.textContent="Escolha um arquivo PDF.";return;}
-    if(arq.size>20*1048576){msg.className="msg erro";msg.textContent="O arquivo passa de 20 MB. Comprima o PDF e tente de novo.";return;}
-    btn.disabled=true;msg.className="msg";msg.textContent="Enviando o PDF…";
-    assets.upload(arq).then(function(r){
-      var agora=new Date().toISOString();
-      estado.manuais.push({id:r.id,equipamento:f.querySelector("#f-eq").value.trim(),categoria:f.querySelector("#f-cat").value,tipo:f.querySelector("#f-tipo").value,marca:f.querySelector("#f-marca").value.trim(),modelo:f.querySelector("#f-mod").value.trim(),tamanho:r.sizeBytes||arq.size,criado:agora});
-      msg.textContent="Salvando o site…";return salvar();
-    }).catch(function(e){falha(btn,msg,e);});
+    if(arq.size>50*1048576){msg.className="msg erro";msg.textContent="O arquivo passa de 50 MB. Comprima o PDF e tente de novo.";return;}
+    var eq=f.querySelector("#f-eq").value.trim(),cat=f.querySelector("#f-cat").value,tipo=f.querySelector("#f-tipo").value,marca=f.querySelector("#f-marca").value.trim(),mod=f.querySelector("#f-mod").value.trim();
+    var nome=limparNome(eq+(mod?" "+mod:"")+(marca?" ("+marca+")":""));
+    var caminho="manuais/"+cat+"/"+(tipo==="Guia rápido"?"Guia rápido":"Manual")+" - "+nome+".pdf";
+    btn.disabled=true;msg.className="msg";msg.textContent="Enviando o PDF… arquivos grandes levam até 1 minuto.";
+    GH.existe(caminho).then(function(ja){if(ja)throw {code:"existe"};return b64Arquivo(arq);})
+      .then(function(b){return GH.put(caminho,b,"Adiciona "+caminho);})
+      .then(function(){estado.manuais.push({id:caminho,equipamento:nome,categoria:cat,tipo:tipo,tamanho:arq.size,novo:true});listar();cats();admin();okMsg(document.getElementById("f-msg"),"Enviado! Já aparece para você; para todo mundo, o site atualiza em 1 a 2 minutos.");})
+      .catch(function(e){if(e&&e.code==="existe"){btn.disabled=false;msg.className="msg erro";msg.textContent="Já existe um arquivo com esse nome nessa categoria.";return;}falha(btn,msg,e);});
   }
   function novaCat(f,btn,msg){
-    var nome=f.querySelector("#c-nome").value.trim();if(!nome)return;
+    var nome=limparNome(f.querySelector("#c-nome").value);if(!nome)return;
     if(estado.categorias.some(function(c){return norm(c.nome)===norm(nome)})){msg.className="msg erro";msg.textContent="Essa categoria já existe.";return;}
     var foto=f.querySelector("#c-foto").files[0];btn.disabled=true;msg.className="msg";msg.textContent="Salvando…";
-    (foto?assets.upload(foto):Promise.resolve(null)).then(function(r){estado.categorias.push({nome:nome,foto:r?r.id:null});return salvar();}).catch(function(e){falha(btn,msg,e);});
+    var p=foto?b64Arquivo(foto).then(function(b){return GH.put("manuais/"+nome+"/foto.jpg",b,"Nova categoria: "+nome);}):GH.put("manuais/"+nome+"/.gitkeep","","Nova categoria: "+nome);
+    p.then(function(){estado.categorias.push({nome:nome,foto:foto?URL.createObjectURL(foto):null});return salvarOrdem();})
+      .then(function(){montar();okMsg(document.getElementById("f-msg"),"Categoria criada! Para todo mundo, o site atualiza em 1 a 2 minutos.");})
+      .catch(function(e){falha(btn,msg,e);});
   }
   function remover(m){
-    estado.manuais=estado.manuais.filter(function(x){return x.id!==m.id});
-    salvar().then(function(){try{assets.delete(m.id)}catch(e){}}).catch(function(){listar();});
+    GH.del(m.id,"Remove "+m.id).then(function(){estado.manuais=estado.manuais.filter(function(x){return x.id!==m.id});listar();cats();avisoTopo("Removido! Para todo mundo, o site atualiza em 1 a 2 minutos.");}).catch(function(e){listar();avisoTopo(erroGH(e),true);});
   }
-  function salvar(){
-    estado.atualizado=new Date().toISOString();
-    return claude.use("artifact").then(function(art){if(!art)throw {code:"not_granted"};return art.publish(gerar());});
-  }
-  function esc(s){return s.replace(/<\/script/gi,"<\\/script");}
-  var reset="";try{var s0=document.head.querySelector("style");reset=s0?s0.textContent:"";}catch(e){}
-  function gerar(){
-    return '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>'+reset+'</style></head><body>'+
-      '<title>Central de Manuais UAM</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n'+
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap">\n'+
-      '<style id="estilo">'+document.getElementById("estilo").textContent+'</style>\n<div id="app"></div>\n'+
-      '<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"><\/script>\n'+'<script type="application/json" id="dados">'+esc(JSON.stringify(estado))+'<\/script>\n'+
-      '<script id="codigo">'+document.getElementById("codigo").textContent+'<\/script>\n';
+  function entrarForm(){
+    var box=document.getElementById("admin");if(!box)return;box.innerHTML="";
+    var msg=el("p",{class:"msg",role:"status"});
+    var inp=el("input",{id:"gh-token",type:"password",autocomplete:"off",placeholder:"Cole aqui o código (começa com github_pat_)",required:"required"});
+    var btn=el("button",{class:"btn btn-pri",type:"submit",text:"Entrar"});
+    var f=el("form",{class:"form",onsubmit:function(e){e.preventDefault();btn.disabled=true;msg.className="msg";msg.textContent="Conferindo…";
+      var t=inp.value.trim();GH.verificar(t).then(function(){GH.setTok(t);editavel=true;montar();document.getElementById("admin").scrollIntoView({block:"start"});})
+        .catch(function(e){btn.disabled=false;msg.className="msg erro";msg.textContent=e&&e.code==="sem_permissao"?"Esse código não tem permissão para alterar o site.":"Código inválido ou vencido. Confira e tente de novo.";});}},[
+      el("div",{class:"campo cheio"},[el("label",{for:"gh-token",text:"Código de acesso do GitHub"}),inp]),
+      el("div",{class:"cheio"},[btn,el("button",{class:"btn btn-sec",type:"button",text:"Cancelar",style:"margin-left:8px",onclick:function(){modoEditor=false;box.innerHTML="";}}),msg])
+    ]);
+    box.appendChild(el("section",{class:"admin bloco","aria-label":"Entrar como editor"},[el("h3",{text:"Entrar como editor"}),
+      el("p",{class:"ajuda",text:"Só o responsável pelo site entra aqui. Use o código de acesso criado no GitHub. Ele fica guardado só neste aparelho."}),f]));
   }
 
   fetch("lista.json",{cache:"no-cache"}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){
     estado.logo=d.logo||null;estado.atualizado=d.atualizado;estado.categorias=d.categorias||[];
     estado.manuais=(d.manuais||[]).map(function(m){return {id:m.arquivo,equipamento:m.nome,categoria:m.categoria,tipo:m.tipo,tamanho:m.tamanho};});
     montar();
+    if(GH.tok())GH.verificar().then(function(){editavel=true;montar();}).catch(function(){});
   }).catch(function(){montar();var l=document.getElementById("lista");if(l)l.innerHTML='<div class="vazio"><strong>Não foi possível carregar a lista</strong>Atualize a página em alguns segundos.</div>';});
 })();
