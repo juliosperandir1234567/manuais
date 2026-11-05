@@ -26,3 +26,11 @@ Envie uma imagem chamada `logo.png` na raiz do repositório e ela aparece no top
 ## PDF maior que 25 MB
 
 Comprima antes em ilovepdf.com (Comprimir PDF).
+
+## Ordem dos cartões
+
+Edite o arquivo `manuais/ordem.txt` (lápis no GitHub): uma categoria por linha, na ordem que quiser.
+
+## Foto da faixa
+
+Troque o arquivo `img/hero.jpg` por outra imagem com o mesmo nome.

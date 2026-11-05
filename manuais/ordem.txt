@@ -1,0 +1,5 @@
+# Ordem dos cartões no site: uma categoria por linha, igual ao nome da pasta.
+Colhedoras de cana
+Tratores
+Pulverizadores
+Motoniveladoras

@@ -3,6 +3,8 @@
 Cada subpasta de manuais/ é uma categoria. Dentro dela:
 - foto.jpg (ou .jpeg/.png/.webp): foto do cartão da categoria (opcional)
 - arquivos .pdf: cada um vira um item. Se o nome começar com "Guia", vira Guia rápido.
+
+A ordem dos cartões segue manuais/ordem.txt (uma categoria por linha).
 """
 import json, os, re, sys
 from datetime import datetime, timezone
@@ -11,6 +13,10 @@ RAIZ = sys.argv[1] if len(sys.argv) > 1 else "."
 PASTA = os.path.join(RAIZ, "manuais")
 FOTOS = ("foto.jpg", "foto.jpeg", "foto.png", "foto.webp")
 ORDEM = ["Tratores", "Colhedoras de cana", "Pulverizadores", "Motoniveladoras"]
+_ordem_txt = os.path.join(RAIZ, "manuais", "ordem.txt")
+if os.path.isfile(_ordem_txt):
+    with open(_ordem_txt, encoding="utf-8") as f:
+        ORDEM = [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
 
 def limpar(nome):
