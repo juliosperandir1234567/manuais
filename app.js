@@ -2,13 +2,30 @@
   var estado={marca:"Central de Manuais UAM",capa:"img/hero.jpg",categorias:[],manuais:[]};
   function enc(p){return p.split("/").map(encodeURIComponent).join("/");}
   estado.manuais=estado.manuais||[];estado.categorias=estado.categorias||[];
-  var filtro={q:"",cat:null,tipo:(location.hash==="#guias"?"Guia rápido":"Manual")};
+  var filtro={q:"",cat:null,tipo:"Manual"};
   function ehGuia(){return filtro.tipo==="Guia rápido";}
-  window.addEventListener("hashchange",function(){var t=location.hash==="#guias"?"Guia rápido":"Manual";if(t!==filtro.tipo){filtro.tipo=t;filtro.cat=null;filtro.q="";montar();}});var TIPOS=["Manual","Guia rápido"];function tipoDe(m){return m.tipo||"Manual";}
+  function slug(s){return norm(s).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"tipo";}
+  function tipoDe(m){return m.tipo||"Manual";}
+  function TIPOS(){var a=["Manual","Guia rápido"];((estado.textos||{}).tipos||[]).concat(estado.manuais.map(tipoDe)).forEach(function(x){if(x&&a.indexOf(x)<0)a.push(x);});return a;}
+  function infoTipo(x){
+    var tx=TX(),tl=((estado.textos||{}).telas||{})[x]||{};
+    if(x==="Manual")return {aba:"Manuais",slug:"manuais",titulo:tx.manual_titulo,sub:tx.manual_sub,abrir:"Abrir manual",um:"manual",varios:"manuais"};
+    if(x==="Guia rápido")return {aba:"Guias rápidos",slug:"guias",titulo:tx.guia_titulo,sub:tx.guia_sub,abrir:"Abrir guia",um:"guia",varios:"guias"};
+    return {aba:x,slug:slug(x),titulo:(tl.titulo||"").trim()||x,sub:(tl.sub||"").trim()||"Encontre o material que você precisa.",abrir:"Abrir",um:"arquivo",varios:"arquivos"};
+  }
+  function tipoDoHash(){var h=location.hash.slice(1);var a=TIPOS();for(var i=0;i<a.length;i++)if(infoTipo(a[i]).slug===h)return a[i];return "Manual";}
+  function prefixo(tipo){return tipo==="Guia rápido"?"Guia rápido":tipo||"Manual";}
+  function selTipo(id,atual){
+    var sel=el("select",{id:id},TIPOS().map(function(x){return el("option",{value:x,text:x,selected:x===atual?"selected":null});}).concat([el("option",{value:"__novo",text:"+ Novo tipo…"})]));
+    var novo=el("input",{id:id+"-novo",placeholder:"Nome do novo tipo (ex.: Mecânico)",hidden:"hidden",maxlength:"40"});
+    sel.addEventListener("change",function(){novo.hidden=sel.value!=="__novo";if(!novo.hidden)novo.focus();});
+    return {box:el("div",{class:"tipo-wrap",style:"display:flex;flex-direction:column;gap:6px"},[sel,novo]),valor:function(){return sel.value==="__novo"?limparNome(novo.value):sel.value;}};
+  }
+  window.addEventListener("hashchange",function(){var t=tipoDoHash();if(t!==filtro.tipo){filtro.tipo=t;filtro.cat=null;filtro.q="";montar();}});
   var assets=null, editavel=false, aba="manual";
   var app=document.getElementById("app");
 
-  function el(tag,attrs,kids){var e=document.createElement(tag);for(var k in attrs||{}){var v=attrs[k];if(v==null)continue;if(k==="text")e.textContent=v;else if(k==="style")e.setAttribute("style",v);else if(k.indexOf("on")===0)e.addEventListener(k.slice(2),v);else e.setAttribute(k,v);}(kids||[]).forEach(function(c){if(c)e.appendChild(typeof c==="string"?document.createTextNode(c):c)});return e;}
+  function el(tag,attrs,kids){var e=document.createElement(tag);for(var k in attrs||{}){var v=attrs[k];if(v==null)continue;if(k==="text")e.textContent=v;else if(k==="style")e.setAttribute("style",v);else if(k.indexOf("on")===0)e.addEventListener(k.slice(2),v);else e.setAttribute(k,v);}(kids||[]).forEach(function ad(c){if(!c)return;if(Array.isArray(c))return c.forEach(ad);e.appendChild(typeof c==="string"?document.createTextNode(c):c)});return e;}
   function norm(s){return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
   function tam(b){if(!b)return "";return b>1048576?(b/1048576).toFixed(1).replace(".",",")+" MB":Math.max(1,Math.round(b/1024))+" KB";}
   function data(iso){try{return new Date(iso).toLocaleDateString("pt-BR")}catch(e){return ""}}
@@ -21,12 +38,12 @@
     var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:TX().marca}),el("span",{class:"selo",text:"Acervo digital"})]);
     if(editavel)mw.appendChild(el("button",{class:"por-logo",type:"button",text:estado.logo?"Trocar logo":"Colocar logo",onclick:function(){escolherFoto(estado.logo&&!/^blob:/.test(estado.logo)?estado.logo:"logo.png",function(u){estado.logo=u;});}}));
     app.appendChild(el("header",{class:"marca"},[mw]));
-    app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},[["Manual","Manuais","manuais"],["Guia rápido","Guias rápidos","guias"]].map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
+    app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},TIPOS().filter(function(x){return x==="Manual"||x==="Guia rápido"||estado.manuais.some(function(m){return tipoDe(m)===x;})||editavel;}).map(function(x){var it=infoTipo(x);return [x,it.aba,it.slug];}).map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
     var hero=el("section",{class:"hero","aria-label":"Apresentação"},[
       el("div",{class:"foto",style:bg(estado.capa),role:"img","aria-label":"Colhedora de cana na lavoura"}),
       el("div",{class:"wrap txt"},[
-        el("h2",{text:ehGuia()?TX().guia_titulo:TX().manual_titulo}),
-        el("p",{text:ehGuia()?TX().guia_sub:TX().manual_sub}),
+        el("h2",{text:infoTipo(filtro.tipo).titulo}),
+        el("p",{text:infoTipo(filtro.tipo).sub}),
         el("div",{class:"busca"},[el("label",{},[
           svgLupa(),
           el("input",{id:"busca",type:"search",placeholder:"Buscar equipamento","aria-label":"Buscar equipamento",value:filtro.q,oninput:function(e){filtro.q=e.target.value;listar();}})
@@ -56,7 +73,7 @@
       var n=contar(c.nome);
       var b=el("button",{class:"cat",type:"button","aria-pressed":String(filtro.cat===c.nome),onclick:function(){filtro.cat=filtro.cat===c.nome?null:c.nome;cats();listar();document.getElementById("secao-lista").scrollIntoView({behavior:"smooth",block:"start"});}},[
         el("div",{class:"img"+(c.foto?"":" sem"),style:bg(c.foto)}),
-        el("div",{class:"nome"},[el("span",{text:c.nome}),n?el("span",{class:"qtd",text:n+(ehGuia()?(n===1?" guia":" guias"):(n===1?" manual":" manuais"))}):null])
+        el("div",{class:"nome"},[el("span",{text:c.nome}),n?el("span",{class:"qtd",text:n+" "+(n===1?infoTipo(filtro.tipo).um:infoTipo(filtro.tipo).varios)}):null])
       ]);
       var w=el("div",{class:"cat-wrap"},[b]);
       if(editavel){w.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto",onclick:function(){escolherFoto(c.foto&&!/^blob:/.test(c.foto)?c.foto:"manuais/"+c.nome+"/foto.jpg",function(u){c.foto=u;});}}));
@@ -77,7 +94,7 @@
       if(filtro.tipo&&tipoDe(m)!==filtro.tipo)return false;
       return !q||norm([m.equipamento,m.marca,m.modelo,m.categoria].join(" ")).indexOf(q)>=0;
     }).sort(function(a,b){return a.equipamento.localeCompare(b.equipamento,"pt-BR")});
-    var titulo=filtro.cat||(q?"Resultado da busca":(ehGuia()?"Guias rápidos":"Manuais"));
+    var titulo=filtro.cat||(q?"Resultado da busca":infoTipo(filtro.tipo).aba);
     var head=el("div",{class:"titulo-lista"},[el("h3",{text:titulo+" ("+vis.length+")"})]);
     if(filtro.cat||q)head.appendChild(el("button",{class:"limpar",type:"button",text:"Ver todos",onclick:function(){filtro.cat=null;filtro.q="";document.getElementById("busca").value="";cats();listar();}}));
     box.appendChild(head);
@@ -89,14 +106,16 @@
     var l=el("div",{class:"lista"});
     vis.forEach(function(m){
       var meta=[m.categoria,m.marca,m.modelo,tam(m.tamanho)].filter(Boolean).join(" · ");
-      var acoes=el("div",{class:"acoes"},[el("a",{class:"btn btn-pri",href:enc(m.id),target:"_blank",rel:"noopener",onclick:function(e){e.preventDefault();abrirPdf(m);},text:tipoDe(m)==="Guia rápido"?"Abrir guia":"Abrir manual"})]);
+      var acoes=el("div",{class:"acoes"},[el("a",{class:"btn btn-pri",href:enc(m.id),target:"_blank",rel:"noopener",onclick:function(e){e.preventDefault();abrirPdf(m);},text:infoTipo(tipoDe(m)).abrir})]);
+      var art;
       if(editavel){
+        acoes.appendChild(el("button",{class:"btn btn-sec",type:"button",text:"Editar",onclick:function(){editarItem(m,art);}}));
         var rem=el("button",{class:"btn btn-sec",type:"button",text:"Remover",onclick:function(){rem.hidden=true;
           acoes.appendChild(el("button",{class:"btn btn-perigo",type:"button",text:"Confirmar remoção",onclick:function(e){e.target.disabled=true;remover(m);}}));
           acoes.appendChild(el("button",{class:"btn btn-sec",type:"button",text:"Cancelar",onclick:listar}));}});
         acoes.appendChild(rem);
       }
-      l.appendChild(el("article",{class:"item"},[el("div",{class:"info"},[el("span",{class:"tag"+(tipoDe(m)==="Guia rápido"?" guia":""),text:tipoDe(m)}),el("h4",{text:m.equipamento}),el("p",{class:"meta",text:meta})]),acoes]));
+      art=el("article",{class:"item"},[el("div",{class:"info"},[el("span",{class:"tag"+(tipoDe(m)==="Guia rápido"?" guia":""),text:tipoDe(m)}),el("h4",{text:m.equipamento}),el("p",{class:"meta",text:meta})]),acoes]);l.appendChild(art);
     });
     box.appendChild(l);
   }
@@ -246,12 +265,12 @@
     if(aba==="manual"){
       var sel=el("select",{id:"f-cat"});estado.categorias.forEach(function(c){sel.appendChild(el("option",{value:c.nome,text:c.nome}))});
       if(filtro.cat)sel.value=filtro.cat;
-      var btn=el("button",{class:"btn btn-pri",type:"submit",text:"Adicionar manual"});
-      corpo=el("form",{class:"form",onsubmit:function(e){e.preventDefault();enviar(corpo,btn,msg);}},[
-        el("div",{class:"campo cheio"},[el("label",{for:"f-arq",text:"Arquivo PDF (manual ou guia rápido, até 50 MB)"}),el("input",{id:"f-arq",type:"file",accept:"application/pdf,.pdf",required:"required"})]),
+      var fTipo;var btn=el("button",{class:"btn btn-pri",type:"submit",text:"Adicionar manual"});
+      corpo=el("form",{class:"form",onsubmit:function(e){e.preventDefault();enviar(corpo,btn,msg,fTipo.valor());}},[
+        el("div",{class:"campo cheio"},[el("label",{for:"f-arq",text:"Arquivo PDF (até 50 MB)"}),el("input",{id:"f-arq",type:"file",accept:"application/pdf,.pdf",required:"required"})]),
         el("div",{class:"campo"},[el("label",{for:"f-eq",text:"Equipamento"}),el("input",{id:"f-eq",required:"required",placeholder:"Ex.: Trator 6110J"})]),
         el("div",{class:"campo"},[el("label",{for:"f-cat",text:"Categoria"}),sel]),
-        el("div",{class:"campo"},[el("label",{for:"f-tipo",text:"Tipo"}),el("select",{id:"f-tipo"},TIPOS.map(function(x){return el("option",{value:x,text:x,selected:x===filtro.tipo?"selected":null});}))]),
+        el("div",{class:"campo"},[el("label",{for:"f-tipo",text:"Tipo"}),(fTipo=selTipo("f-tipo",filtro.tipo)).box]),
         el("div",{class:"campo"},[el("label",{for:"f-marca",text:"Marca"}),el("input",{id:"f-marca",placeholder:"Ex.: John Deere"})]),
         el("div",{class:"campo"},[el("label",{for:"f-mod",text:"Modelo / ano"}),el("input",{id:"f-mod",placeholder:"Ex.: 6110J · 2021"})]),
         el("div",{class:"cheio"},[btn,msg])
@@ -263,6 +282,7 @@
         campoTx("t-marca","Nome no topo do site",tx.marca,true),
         campoTx("t-mt","Título da tela Manuais",tx.manual_titulo),campoTx("t-ms","Frase abaixo do título (Manuais)",tx.manual_sub),
         campoTx("t-gt","Título da tela Guias rápidos",tx.guia_titulo),campoTx("t-gs","Frase abaixo do título (Guias)",tx.guia_sub),
+        TIPOS().slice(2).map(function(x,i){var it=infoTipo(x);return el("div",{class:"cheio form",style:"padding:0"},[campoTx("t-x"+i+"t","Título da tela "+x,it.titulo),campoTx("t-x"+i+"s","Frase abaixo do título ("+x+")",it.sub)]);}),
         el("div",{class:"cheio"},[btn3,msg])
       ]);
     }else{
@@ -294,6 +314,14 @@
       verificar:function(t){return req("GET","/repos/"+owner+"/"+repo,null,t).then(function(j){if(!j)throw {code:"repo"};if(!j.permissions||!j.permissions.push)throw {code:"sem_permissao"};return j;});},
       existe:function(p){return sha(p).then(function(s){return !!s;});},
       put:function(p,b64,msg){return sha(p).then(function(s){var b={message:msg,content:b64,branch:"main"};if(s)b.sha=s;return req("PUT",cpath(p),b);});},
+      mover:function(de,para,msg){
+        var base="/repos/"+owner+"/"+repo+"/git",commit,blob;
+        return Promise.all([req("GET",base+"/ref/heads/main"),req("GET",cpath(de)+"?ref=main")]).then(function(r){
+          if(!r[1]||!r[1].sha)throw {code:"sumiu"};blob=r[1].sha;commit=r[0].object.sha;return req("GET",base+"/commits/"+commit);
+        }).then(function(c){return req("POST",base+"/trees",{base_tree:c.tree.sha,tree:[{path:para,mode:"100644",type:"blob",sha:blob},{path:de,mode:"100644",type:"blob",sha:null}]});})
+          .then(function(tr){return req("POST",base+"/commits",{message:msg,tree:tr.sha,parents:[commit]});})
+          .then(function(nc){return req("PATCH",base+"/refs/heads/main",{sha:nc.sha});});
+      },
       del:function(p,msg){return sha(p).then(function(s){if(!s)return {};return req("DELETE",cpath(p),{message:msg,sha:s,branch:"main"});});}
     };
   })();
@@ -328,17 +356,18 @@
     return GH.put("manuais/ordem.txt",b64Texto(txt),"Ordem das categorias");
   }
   function falha(btn,msg,e){btn.disabled=false;msg.className="msg erro";msg.textContent=erroGH(e);}
-  function enviar(f,btn,msg){
+  function enviar(f,btn,msg,tipoEsc){
     var arq=f.querySelector("#f-arq").files[0];
     if(!arq){msg.className="msg erro";msg.textContent="Escolha um arquivo PDF.";return;}
     if(arq.size>50*1048576){msg.className="msg erro";msg.textContent="O arquivo passa de 50 MB. Comprima o PDF e tente de novo.";return;}
-    var eq=f.querySelector("#f-eq").value.trim(),cat=f.querySelector("#f-cat").value,tipo=f.querySelector("#f-tipo").value,marca=f.querySelector("#f-marca").value.trim(),mod=f.querySelector("#f-mod").value.trim();
+    var eq=f.querySelector("#f-eq").value.trim(),cat=f.querySelector("#f-cat").value,tipo=tipoEsc,marca=f.querySelector("#f-marca").value.trim(),mod=f.querySelector("#f-mod").value.trim();
     var nome=limparNome(eq+(mod?" "+mod:"")+(marca?" ("+marca+")":""));
-    var caminho="manuais/"+cat+"/"+(tipo==="Guia rápido"?"Guia rápido":"Manual")+" - "+nome+".pdf";
+    if(!tipo){msg.className="msg erro";msg.textContent="Escreva o nome do novo tipo.";return;}
+    var caminho="manuais/"+cat+"/"+prefixo(tipo)+" - "+nome+".pdf";
     btn.disabled=true;msg.className="msg";msg.textContent="Enviando o PDF… arquivos grandes levam até 1 minuto.";
     GH.existe(caminho).then(function(ja){if(ja)throw {code:"existe"};return b64Arquivo(arq);})
       .then(function(b){return GH.put(caminho,b,"Adiciona "+caminho);})
-      .then(function(){estado.manuais.push({id:caminho,equipamento:nome,categoria:cat,tipo:tipo,tamanho:arq.size,novo:true});listar();cats();admin();okMsg(document.getElementById("f-msg"),"Enviado! Já aparece para você; para todo mundo, o site atualiza em 1 a 2 minutos.");})
+      .then(function(){if(TIPOS().indexOf(tipo)<0){var tx=JSON.parse(JSON.stringify(estado.textos||{}));tx.tipos=(tx.tipos||[]).concat([tipo]);estado.textos=tx;return GH.put("textos.json",b64Texto(JSON.stringify(tx,null,1)+"\n"),"Novo tipo: "+tipo);}}).then(function(){estado.manuais.push({id:caminho,equipamento:nome,categoria:cat,tipo:tipo,tamanho:arq.size,novo:true});listar();cats();admin();okMsg(document.getElementById("f-msg"),"Enviado! Já aparece para você; para todo mundo, o site atualiza em 1 a 2 minutos.");})
       .catch(function(e){if(e&&e.code==="existe"){btn.disabled=false;msg.className="msg erro";msg.textContent="Já existe um arquivo com esse nome nessa categoria.";return;}falha(btn,msg,e);});
   }
   function novaCat(f,btn,msg){
@@ -357,9 +386,35 @@
   function TX(){var o={},s=estado.textos||{};for(var k in TX_PADRAO)o[k]=(s[k]||"").trim()||TX_PADRAO[k];return o;}
   function salvarTextos(f,btn,msg){
     var v=function(id){return f.querySelector(id).value.trim();};
-    var novo={marca:v("#t-marca"),manual_titulo:v("#t-mt"),manual_sub:v("#t-ms"),guia_titulo:v("#t-gt"),guia_sub:v("#t-gs")};
+    var novo={marca:v("#t-marca"),manual_titulo:v("#t-mt"),manual_sub:v("#t-ms"),guia_titulo:v("#t-gt"),guia_sub:v("#t-gs"),tipos:((estado.textos||{}).tipos||[]).slice(),telas:{}};
+    TIPOS().slice(2).forEach(function(x,i){novo.telas[x]={titulo:v("#t-x"+i+"t"),sub:v("#t-x"+i+"s")};});
     btn.disabled=true;msg.className="msg";msg.textContent="Salvando…";
     GH.put("textos.json",b64Texto(JSON.stringify(novo,null,1)+"\n"),"Textos do site").then(function(){estado.textos=novo;document.title=TX().marca;montar();okMsg(document.getElementById("f-msg"),"Textos salvos! Para todo mundo, o site atualiza em 1 a 2 minutos.");document.getElementById("admin").scrollIntoView({block:"start"});}).catch(function(e){falha(btn,msg,e);});
+  }
+  function editarItem(m,art){
+    var nomeIn=el("input",{id:"e-nome",value:m.equipamento,required:"required",maxlength:"120"});
+    var st=selTipo("e-tipo",tipoDe(m));
+    var cs=el("select",{id:"e-cat"},estado.categorias.map(function(c){return el("option",{value:c.nome,text:c.nome,selected:c.nome===m.categoria?"selected":null});}));
+    var msg=el("p",{class:"msg",role:"status"});
+    var bs=el("button",{class:"btn btn-pri",type:"submit",text:"Salvar"});
+    var f=el("form",{class:"form editar",onsubmit:function(e){e.preventDefault();
+      var nome=limparNome(nomeIn.value),tipo=st.valor(),cat=cs.value;
+      if(!nome||!tipo){msg.className="msg erro";msg.textContent=!nome?"Escreva o nome.":"Escreva o nome do novo tipo.";return;}
+      var para="manuais/"+cat+"/"+prefixo(tipo)+" - "+nome+".pdf";
+      if(para===m.id){listar();return;}
+      bs.disabled=true;msg.className="msg";msg.textContent="Salvando…";
+      GH.existe(para).then(function(ja){if(ja)throw {code:"existe"};return GH.mover(m.id,para,"Renomeia "+m.id+" → "+para);})
+        .then(function(){var novoTipo=TIPOS().indexOf(tipo)<0;m.id=para;m.equipamento=nome;m.tipo=tipo;m.categoria=cat;
+          if(novoTipo){var tx=JSON.parse(JSON.stringify(estado.textos||{}));tx.tipos=(tx.tipos||[]).concat([tipo]);estado.textos=tx;return GH.put("textos.json",b64Texto(JSON.stringify(tx,null,1)+"\n"),"Novo tipo: "+tipo);}})
+        .then(function(){montar();avisoTopo("Salvo! Para todo mundo, o site atualiza em 1 a 2 minutos.");})
+        .catch(function(e){bs.disabled=false;msg.className="msg erro";msg.textContent=e&&e.code==="existe"?"Já existe um arquivo com esse nome, tipo e categoria.":e&&e.code==="sumiu"?"Esse arquivo não foi encontrado. Atualize a página.":erroGH(e);});
+    }},[
+      el("div",{class:"campo cheio"},[el("label",{for:"e-nome",text:"Nome que aparece no site"}),nomeIn]),
+      el("div",{class:"campo"},[el("label",{for:"e-tipo",text:"Tipo"}),st.box]),
+      el("div",{class:"campo"},[el("label",{for:"e-cat",text:"Categoria"}),cs]),
+      el("div",{class:"cheio"},[bs,el("button",{class:"btn btn-sec",type:"button",text:"Cancelar",style:"margin-left:8px",onclick:listar}),msg])
+    ]);
+    art.innerHTML="";art.appendChild(el("div",{class:"info",style:"flex:1 1 100%"},[el("h4",{text:"Editar: "+m.equipamento}),f]));nomeIn.focus();
   }
   function entrarForm(){
     var box=document.getElementById("admin");if(!box)return;box.innerHTML="";
@@ -379,7 +434,7 @@
   fetch("textos.json",{cache:"no-cache"}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}).then(function(tx){estado.textos=tx||{};document.title=TX().marca;return fetch("lista.json",{cache:"no-cache"});}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){
     estado.logo=d.logo||null;estado.atualizado=d.atualizado;estado.categorias=d.categorias||[];
     estado.manuais=(d.manuais||[]).map(function(m){return {id:m.arquivo,equipamento:m.nome,categoria:m.categoria,tipo:m.tipo,tamanho:m.tamanho};});
-    montar();
+    filtro.tipo=tipoDoHash();montar();
     if(GH.tok())GH.verificar().then(function(){editavel=true;montar();}).catch(function(){});
   }).catch(function(){montar();var l=document.getElementById("lista");if(l)l.innerHTML='<div class="vazio"><strong>Não foi possível carregar a lista</strong>Atualize a página em alguns segundos.</div>';});
 })();

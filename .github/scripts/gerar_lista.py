@@ -2,7 +2,8 @@
 
 Cada subpasta de manuais/ é uma categoria. Dentro dela:
 - foto.jpg (ou .jpeg/.png/.webp): foto do cartão da categoria (opcional)
-- arquivos .pdf: cada um vira um item. Se o nome começar com "Guia", vira Guia rápido.
+- arquivos .pdf: "Tipo - Nome.pdf". "Manual - ..." e "Guia rápido - ..." são os tipos padrão;
+  qualquer outro prefixo (ex.: "Mecânico - ...") vira um tipo novo, com tela própria.
 
 A ordem dos cartões segue manuais/ordem.txt (uma categoria por linha).
 """
@@ -20,10 +21,19 @@ if os.path.isfile(_ordem_txt):
 
 
 def limpar(nome):
-    nome = re.sub(r"\.pdf$", "", nome, flags=re.I)
-    tipo = "Guia rápido" if re.match(r"\s*guia", nome, re.I) else "Manual"
-    nome = re.sub(r"^\s*(guia\s*r[aá]pido|guia|manual)\s*[-–—:]\s*", "", nome, flags=re.I)
-    return nome.strip() or nome, tipo
+    """'Tipo - Nome.pdf' -> (Nome, Tipo). Sem prefixo, o tipo é Manual."""
+    nome = re.sub(r"\.pdf$", "", nome, flags=re.I).strip()
+    m = re.match(r"^(.{1,40}?)\s+[-–—]\s+(.+)$", nome)
+    if not m:
+        return nome, "Manual"
+    pre, resto = m.group(1).strip(), m.group(2).strip()
+    if re.match(r"guia", pre, re.I):
+        tipo = "Guia rápido"
+    elif re.fullmatch(r"manual", pre, re.I):
+        tipo = "Manual"
+    else:
+        tipo = pre
+    return resto, tipo
 
 
 categorias, itens = [], []
