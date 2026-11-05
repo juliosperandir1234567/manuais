@@ -18,21 +18,22 @@
 
   function montar(){
     app.innerHTML="";
-    var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:estado.marca||"Central de Manuais"}),el("span",{class:"selo",text:"Acervo digital"})]);
+    var mw=el("div",{class:"wrap"},[estado.logo?el("span",{class:"logo-chip"},[el("img",{class:"logo",src:urlFoto(estado.logo),alt:"Logo"})]):null,el("h1",{text:TX().marca}),el("span",{class:"selo",text:"Acervo digital"})]);
     if(editavel)mw.appendChild(el("button",{class:"por-logo",type:"button",text:estado.logo?"Trocar logo":"Colocar logo",onclick:function(){escolherFoto(estado.logo&&!/^blob:/.test(estado.logo)?estado.logo:"logo.png",function(u){estado.logo=u;});}}));
     app.appendChild(el("header",{class:"marca"},[mw]));
     app.appendChild(el("nav",{class:"telas","aria-label":"Escolher tipo"},[el("div",{class:"wrap"},[["Manual","Manuais","manuais"],["Guia rápido","Guias rápidos","guias"]].map(function(o){var n=estado.manuais.filter(function(m){return tipoDe(m)===o[0]}).length;return el("a",{href:"#"+o[2],class:"tela","aria-current":filtro.tipo===o[0]?"page":null,onclick:function(e){e.preventDefault();if(filtro.tipo===o[0])return;filtro.tipo=o[0];filtro.cat=null;filtro.q="";try{history.replaceState(null,"","#"+o[2]);}catch(_){}montar();window.scrollTo(0,0);}},[o[1],el("span",{class:"n",text:String(n)})]);}))]));
     var hero=el("section",{class:"hero","aria-label":"Apresentação"},[
       el("div",{class:"foto",style:bg(estado.capa),role:"img","aria-label":"Colhedora de cana na lavoura"}),
       el("div",{class:"wrap txt"},[
-        el("h2",{text:ehGuia()?"Guias Rápidos":"Manuais de Equipamentos"}),
-        el("p",{text:ehGuia()?"Consulta rápida para o dia a dia da operação.":"Encontre o manual da sua máquina."}),
+        el("h2",{text:ehGuia()?TX().guia_titulo:TX().manual_titulo}),
+        el("p",{text:ehGuia()?TX().guia_sub:TX().manual_sub}),
         el("div",{class:"busca"},[el("label",{},[
           svgLupa(),
           el("input",{id:"busca",type:"search",placeholder:"Buscar equipamento","aria-label":"Buscar equipamento",value:filtro.q,oninput:function(e){filtro.q=e.target.value;listar();}})
         ])])
       ])
     ]);
+    if(editavel)hero.appendChild(el("button",{class:"trocar",type:"button",text:"Editar textos",style:"right:auto;left:max(12px,env(safe-area-inset-left,0px))",onclick:function(){aba="textos";admin();document.getElementById("admin").scrollIntoView({block:"start"});}}));
     if(editavel)hero.appendChild(el("button",{class:"trocar",type:"button",text:"Trocar foto da faixa",onclick:function(){escolherFoto("img/hero.jpg",function(u){estado.capa=u;});}}));
     app.appendChild(hero);
     var main=el("main",{},[el("div",{class:"wrap"},[
@@ -240,7 +241,7 @@
   function admin(){
     var box=document.getElementById("admin");box.innerHTML="";if(!editavel){if(modoEditor)entrarForm();return;}
     var msg=el("p",{class:"msg",id:"f-msg",role:"status"});
-    var abas=el("div",{class:"abas",role:"tablist"},[["manual","Adicionar manual"],["cat","Nova categoria"]].map(function(a){return el("button",{type:"button",role:"tab","aria-selected":String(aba===a[0]),text:a[1],onclick:function(){aba=a[0];admin();}});}));
+    var abas=el("div",{class:"abas",role:"tablist"},[["manual","Adicionar manual"],["cat","Nova categoria"],["textos","Editar textos"]].map(function(a){return el("button",{type:"button",role:"tab","aria-selected":String(aba===a[0]),text:a[1],onclick:function(){aba=a[0];admin();}});}));
     var corpo;
     if(aba==="manual"){
       var sel=el("select",{id:"f-cat"});estado.categorias.forEach(function(c){sel.appendChild(el("option",{value:c.nome,text:c.nome}))});
@@ -254,6 +255,15 @@
         el("div",{class:"campo"},[el("label",{for:"f-marca",text:"Marca"}),el("input",{id:"f-marca",placeholder:"Ex.: John Deere"})]),
         el("div",{class:"campo"},[el("label",{for:"f-mod",text:"Modelo / ano"}),el("input",{id:"f-mod",placeholder:"Ex.: 6110J · 2021"})]),
         el("div",{class:"cheio"},[btn,msg])
+      ]);
+    }else if(aba==="textos"){
+      var tx=TX(),btn3=el("button",{class:"btn btn-pri",type:"submit",text:"Salvar textos"});
+      function campoTx(id,rot,val,cheio){return el("div",{class:"campo"+(cheio?" cheio":"")},[el("label",{for:id,text:rot}),el("input",{id:id,value:val,maxlength:"80",required:"required"})]);}
+      corpo=el("form",{class:"form",onsubmit:function(e){e.preventDefault();salvarTextos(corpo,btn3,msg);}},[
+        campoTx("t-marca","Nome no topo do site",tx.marca,true),
+        campoTx("t-mt","Título da tela Manuais",tx.manual_titulo),campoTx("t-ms","Frase abaixo do título (Manuais)",tx.manual_sub),
+        campoTx("t-gt","Título da tela Guias rápidos",tx.guia_titulo),campoTx("t-gs","Frase abaixo do título (Guias)",tx.guia_sub),
+        el("div",{class:"cheio"},[btn3,msg])
       ]);
     }else{
       var btn2=el("button",{class:"btn btn-pri",type:"submit",text:"Criar categoria"});
@@ -343,6 +353,14 @@
   function remover(m){
     GH.del(m.id,"Remove "+m.id).then(function(){estado.manuais=estado.manuais.filter(function(x){return x.id!==m.id});listar();cats();avisoTopo("Removido! Para todo mundo, o site atualiza em 1 a 2 minutos.");}).catch(function(e){listar();avisoTopo(erroGH(e),true);});
   }
+  var TX_PADRAO={marca:"Central de Manuais UAM",manual_titulo:"Manuais de Equipamentos",manual_sub:"Encontre o manual da sua máquina.",guia_titulo:"Guias Rápidos",guia_sub:"Consulta rápida para o dia a dia da operação."};
+  function TX(){var o={},s=estado.textos||{};for(var k in TX_PADRAO)o[k]=(s[k]||"").trim()||TX_PADRAO[k];return o;}
+  function salvarTextos(f,btn,msg){
+    var v=function(id){return f.querySelector(id).value.trim();};
+    var novo={marca:v("#t-marca"),manual_titulo:v("#t-mt"),manual_sub:v("#t-ms"),guia_titulo:v("#t-gt"),guia_sub:v("#t-gs")};
+    btn.disabled=true;msg.className="msg";msg.textContent="Salvando…";
+    GH.put("textos.json",b64Texto(JSON.stringify(novo,null,1)+"\n"),"Textos do site").then(function(){estado.textos=novo;document.title=TX().marca;montar();okMsg(document.getElementById("f-msg"),"Textos salvos! Para todo mundo, o site atualiza em 1 a 2 minutos.");document.getElementById("admin").scrollIntoView({block:"start"});}).catch(function(e){falha(btn,msg,e);});
+  }
   function entrarForm(){
     var box=document.getElementById("admin");if(!box)return;box.innerHTML="";
     var msg=el("p",{class:"msg",role:"status"});
@@ -358,7 +376,7 @@
       el("p",{class:"ajuda",text:"Só o responsável pelo site entra aqui. Use o código de acesso criado no GitHub. Ele fica guardado só neste aparelho."}),f]));
   }
 
-  fetch("lista.json",{cache:"no-cache"}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){
+  fetch("textos.json",{cache:"no-cache"}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}).then(function(tx){estado.textos=tx||{};document.title=TX().marca;return fetch("lista.json",{cache:"no-cache"});}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){
     estado.logo=d.logo||null;estado.atualizado=d.atualizado;estado.categorias=d.categorias||[];
     estado.manuais=(d.manuais||[]).map(function(m){return {id:m.arquivo,equipamento:m.nome,categoria:m.categoria,tipo:m.tipo,tamanho:m.tamanho};});
     montar();
